@@ -1,14 +1,13 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, col, current_timestamp,lit,sum as spark_sum,coalesce, datediff, current_date,date_sub,to_date,when
-from pyspark.sql.functions import *
+from pyspark.sql.functions import from_json, col, current_timestamp,lit,sum as spark_sum,coalesce, datediff, current_date,date_sub,to_date,when, max as spark_max
 from pyspark.sql.window import Window
 from pyspark.sql.functions import row_number
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, LongType
 from datetime import datetime,date, timedelta
 import os
 
-#spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 <>.py
-os.environ["SPARK_LOCAL_IP"] = "*******"
+#spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,org.apache.hadoop:hadoop-aws:3.3.4 Features_Stream_s3.py
+os.environ["SPARK_LOCAL_IP"] = "127.0.0.1"
 
 # =====================================================
 # 1. Spark Session
@@ -24,8 +23,8 @@ spark.sparkContext.setLogLevel("WARN")
 # =====================================================
 hadoop_conf = spark._jsc.hadoopConfiguration()
 hadoop_conf.set("fs.s3a.endpoint", "http://localhost:9000")
-hadoop_conf.set("fs.s3a.access.key", "********")
-hadoop_conf.set("fs.s3a.secret.key", "********")
+hadoop_conf.set("fs.s3a.access.key", "minioadmin")
+hadoop_conf.set("fs.s3a.secret.key", "minioadmin")
 hadoop_conf.set("fs.s3a.path.style.access", "true")
 hadoop_conf.set("fs.s3a.connection.ssl.enabled", "false")
 
@@ -106,7 +105,7 @@ conn = psycopg2.connect(
     host="localhost",
     database="creditstar",
     user="credit_dev",
-    password="********"
+    password="nag6895"
 )
 
 def fetch_table(query):
@@ -169,7 +168,7 @@ def foreach_batch_function(df, batch_id):
     # Get last late payment date per user
     last_late_payment = (
         late_payments.groupBy("user_id")
-        .agg(max(col("payment_created_on")).alias("last_late_payment_date"))
+        .agg(spark_max(col("payment_created_on")).alias("last_late_payment_date"))
     )
 
     # Join with feature_row
@@ -229,7 +228,7 @@ def foreach_batch_function(df, batch_id):
         )
 
     # Write features to console
-    #feature_row.show(feature_row.count(),truncate=False)
+    feature_row.show(feature_row.count(),truncate=False)
 
     # -------------------------
     # Write to S3 (PARTITIONED)
